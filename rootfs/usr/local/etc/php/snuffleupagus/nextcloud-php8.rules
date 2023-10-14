@@ -8,7 +8,10 @@
 sp.harden_random.enable();
 
 # Disabled XXE
-sp.xxe_protection.enable();
+# Starting with 25.0.9 Nextcloud does the same and in doing so triggers this rule.
+# sp.xxe_protection.enable();
+sp.disable_function.function("libxml_set_external_entity_loader").filename("/nextcloud/lib/base.php").allow(); 
+sp.disable_function.function("libxml_set_external_entity_loader").drop(); 
 
 # Global configuration variables
 # sp.global.secret_key("YOU _DO_ NEED TO CHANGE THIS WITH SOME RANDOM CHARACTERS.");
