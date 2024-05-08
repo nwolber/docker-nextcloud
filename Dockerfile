@@ -1,24 +1,24 @@
 # -------------- Build-time variables --------------
-ARG NEXTCLOUD_VERSION=28.0.4
-ARG PHP_VERSION=8.1
-ARG NGINX_VERSION=1.25
+ARG NEXTCLOUD_VERSION=29.0.0
+ARG PHP_VERSION=8.2
+ARG NGINX_VERSION=1.26
 
-ARG ALPINE_VERSION=3.18
+ARG ALPINE_VERSION=3.19
 ARG HARDENED_MALLOC_VERSION=11
 ARG SNUFFLEUPAGUS_VERSION=0.10.0
 
 ARG UID=1000
 ARG GID=1000
 
-# nextcloud-28.0.4.tar.bz2
-ARG SHA256_SUM="9bfecee1e12fba48c49e9a71caa81c4ba10b2884787fab75d64ccfd122a13019"
+# nextcloud-29.0.0.tar.bz2
+ARG SHA256_SUM="e9b53f6432b6f664487d3869645fa121a64cf0ed6aee83aa560903daf86b52bd"
 
 # Nextcloud Security <security@nextcloud.com> (D75899B9A724937A)
 ARG GPG_FINGERPRINT="2880 6A87 8AE4 23A2 8372  792E D758 99B9 A724 937A"
 # ---------------------------------------------------
 
 ### Build PHP base
-FROM php:${PHP_VERSION}-fpm-alpine${ALPINE_VERSION} as base
+FROM docker.io/library/php:${PHP_VERSION}-fpm-alpine${ALPINE_VERSION} as base
 
 ARG SNUFFLEUPAGUS_VERSION
 
@@ -35,17 +35,23 @@ RUN apk -U upgrade \
         libzip-dev \
         openldap-dev \
         postgresql-dev \
+        samba-dev \
+        imagemagick-dev \
         zlib-dev \
  && apk --no-cache add \
         freetype \
         gmp \
         icu \
         libjpeg-turbo \
+        librsvg \
         libpq \
         libpq \
         libwebp \
         libzip \
+        libsmbclient \
         openldap \
+        libgomp \
+        imagemagick \
         zlib \
  && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
  && docker-php-ext-configure ldap \
@@ -53,17 +59,24 @@ RUN apk -U upgrade \
         bcmath \
         exif \
         gd \
+        bz2 \
         intl \
         ldap \
         opcache \
         pcntl \
         pdo_mysql \
         pdo_pgsql \
+        sysvsem \
         zip \
         gmp \
+ && pecl install smbclient \
  && pecl install APCu \
  && pecl install redis \
- && echo "extension=redis.so" > /usr/local/etc/php/conf.d/redis.ini \
+ && pecl install imagick \
+ && docker-php-ext-enable \
+        smbclient \
+        redis \
+        imagick \
  && cd /tmp && git clone --depth 1 --branch v${SNUFFLEUPAGUS_VERSION} https://github.com/jvoisin/snuffleupagus \
  && cd snuffleupagus/src && phpize && ./configure --enable-snuffleupagus && make && make install \
  && apk del build-deps \
@@ -72,7 +85,7 @@ RUN apk -U upgrade \
 
 ### Build Hardened Malloc
 ARG ALPINE_VERSION
-FROM alpine:${ALPINE_VERSION} as build-malloc
+FROM docker.io/library/alpine:${ALPINE_VERSION} as build-malloc
 
 ARG HARDENED_MALLOC_VERSION
 ARG CONFIG_NATIVE=false
@@ -86,7 +99,7 @@ RUN apk --no-cache add build-base git gnupg && cd /tmp \
 
 
 ### Fetch nginx
-FROM nginx:${NGINX_VERSION}-alpine${ALPINE_VERSION} as nginx
+FROM docker.io/library/nginx:${NGINX_VERSION}-alpine as nginx
 
 
 ### Build Nextcloud (production environemnt)
@@ -150,7 +163,7 @@ EXPOSE 8888
 
 LABEL org.opencontainers.image.description="All-in-one Nextcloud image, based on Alpine Linux" \
       org.opencontainers.image.version="${NEXTCLOUD_VERSION}" \
-      org.opencontainers.image.authors="Wonderfall <wonderfall@protonmail.com>" \
-      org.opencontainers.image.source="https://github.com/Wonderfall/docker-nextcloud"
+      org.opencontainers.image.authors="Hoellen <dev@hoellen.eu>" \
+      org.opencontainers.image.source="https://github.com/hoellen/docker-nextcloud"
 
 CMD ["run.sh"]
